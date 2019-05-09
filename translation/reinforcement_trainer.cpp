@@ -8,8 +8,6 @@
 	#include "reinforcement_trainer.h"
 #endif
 
-#include <fstream>
-
 using namespace std;
 
 void save_model() {
@@ -20,6 +18,28 @@ void save_model() {
 }
 
 void train() {
+
+	char feedback = 0;
+	
+	while(feedback != 'x') {
+	
+		switch(feedback) {
+			case POSITIVE_RESULT:
+				//do something to reinforce last decision
+				break;
+			case NEGATIVE_RESULT:
+				//Undo last decision, try something else	
+				break;
+			case TERMINATE:
+				//We need to exit, so just break;
+				break;
+			default:
+				warn("That character is not recognized. Please enter " + POSITIVE_RESULT + " for a positive response, " + NEGATIVE_RESULT + " for a negative response, or " + TERMINATE + " to exit");
+		
+		}
+	
+	}
+
 }
 
 

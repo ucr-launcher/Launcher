@@ -1,6 +1,11 @@
 #include <stack>
 #include <fstream>
 
+#ifndef S_UTILS_H
+#define S_UTILS_H
+	#include "s_utils.h"
+#endif
+
 //**** Variables ****
 
 // Input set that tells the trainer how the algorithm failed

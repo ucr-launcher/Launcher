@@ -4,11 +4,11 @@
 #endif
 
 //@Params: a vector who's 0th index is the x location data, 1st index is the y location data, and the 2nd index is the z location data.
-void find_trajectory(vector<float> &data) {  
+int find_trajectory(vector<float> &data) {  
 
-	if (data.size() < 3 || data.size() > 3) { //check if the input vector has the correct size
+	if (data.size() != 3) { //check if the input vector has the correct size
 		cout << "Error: Location_data vector has wrong size! Expected: 3. Got: " << data.size() << endl;
-		return;
+		return -1; //error signal
 	}
 	
 	//Transform the vector's contents using the scalars and constants
@@ -16,6 +16,7 @@ void find_trajectory(vector<float> &data) {
 	data.at(1) = data.at(1) * y_scalar + y_const;
 	data.at(2) = data.at(2) * z_scalar + z_const;
 	
+	return 0; //signal that we're all good.
 }
 
 /*

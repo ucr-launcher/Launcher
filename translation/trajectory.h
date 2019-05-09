@@ -20,4 +20,4 @@ const float x_const = 0.0;
 const float y_const = 0.0;
 const float z_const = 0.0;
 
-void find_trajectory(vector<float> &data);
+int find_trajectory(vector<float> &data);
