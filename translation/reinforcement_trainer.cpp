@@ -22,13 +22,5 @@ void save_model() {
 void train() {
 }
 
-int main() {
-	
-	
-	
-	
-	
-	return 0;
-}
 
 
