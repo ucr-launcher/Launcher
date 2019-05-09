@@ -13,7 +13,7 @@ using namespace std;
 
 void save_model() {
 	ofstream ofs;
-	ofs.open (model_name);
+	ofs.open (MODEL_NAME);
 	ofs << x_scalar << endl << y_scalar << endl << z_scalar << endl << x_const << endl << y_const << endl << z_const << endl;
 	ofs.close();
 
