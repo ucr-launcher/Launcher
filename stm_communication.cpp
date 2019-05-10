@@ -10,6 +10,8 @@ int num_steps            = 0;
 double kinect_fov_middle = 28.5;
 double degrees_per_step  = 1.8;
 
+int direction            = 0;
+
 
 DigitalOut D_8(D8);
 DigitalOut D_9(D9);
@@ -20,12 +22,14 @@ DigitalOut D_11(D11);
 
 
 //--------------  ORIENTATION MAPPER ------------------------
-//maps value from incoming analog signal to correct range
+// Maps value from incoming pixel value to correct range
 float map(float x, float in_min, float in_max, float out_min, float out_max)
 {
   return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+// Maps pixels to number of steps needed to turn n degrees. 
+// Returns a 1 or 0 to determine whether to make left or right turns.
 int map_orientation(int x){
     // Pixels to degrees
     double degrees = 0;
@@ -160,6 +164,17 @@ int main() {
         {
             turn_left_n_steps(5);
         }
+        
+        //---------------------- FIXME -- TEST --------------------------
+        // Value returned is a 1 or 0 to determin Left or Right turns
+        direction = map_orientation(xaxis_location);
+        
+        if (direction){
+            turn_right_n_steps(num_steps);
+        }else if(!direction){
+            turn_left_n_steps(num_steps);
+        }
+        //----------------------------------------------------------------
         
         // Publish any data necessary to be fed back to pc
         //transmit_msg.data = xaxis_location;
