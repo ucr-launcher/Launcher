@@ -33,13 +33,14 @@ float map(float x, float in_min, float in_max, float out_min, float out_max)
 int map_orientation(int x){
     // Pixels to degrees
     double degrees = 0;
-    degrees = map(x, 0, 640, 0,57);
+    degrees = map(x, 0, 800, 0,57);
     
     // degrees to steps
     num_steps = (kinect_fov_middle - degrees)/ degrees_per_step;
     
     // Left or right turn
     if (num_steps < 0){
+        num_steps = num_steps * -1;
         return 1;
     }else{
         return 0;
