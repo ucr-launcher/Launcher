@@ -30,7 +30,10 @@ void train() {
 				//Undo last decision, try something else	
 				break;
 			case TERMINATE:
-				//We need to exit, so just break;
+				//We need to exit, so save and just break;
+				
+				save_model();
+				
 				break;
 			case INFORM: //prints what each possible input char is and what it is for
 				cout << "Positive Result: " << POSITIVE_RESULT << endl;
