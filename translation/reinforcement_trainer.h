@@ -3,7 +3,12 @@
 
 #ifndef S_UTILS_H
 #define S_UTILS_H
-	#include "s_utils.h"
+	//#include "s_utils.h"
+#endif
+
+#ifndef TRAJECTORY_H
+#define TRAJECTORY_H
+	#include "trajectory.h"
 #endif
 
 //**** Variables ****
@@ -12,6 +17,7 @@
 const char POSITIVE_RESULT = 'p';
 const char NEGATIVE_RESULT = 'n';
 const char TERMINATE = 'x'; // to finish training and exit
+const char INFORM = '?'; // prints a list of characters and what they do
 
 //Identifiers for actions that the trainer can take.
 enum decision { INCREASE_X, DECREASE_X, INCREASE_Y, DECREASE_Y, INCREASE_Z, DECREASE_Z};

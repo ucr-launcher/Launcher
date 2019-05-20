@@ -1,8 +1,3 @@
-#ifndef TRAJECTORY_H
-#define TRAJECTORY_H
-	#include "trajectory.h"
-#endif
-
 #ifndef REINFORCEMENT_TRAINER_H
 #define REINFORCEMENT_TRAINER_H
 	#include "reinforcement_trainer.h"
@@ -21,7 +16,11 @@ void train() {
 
 	char feedback = 0;
 	
-	while(feedback != 'x') {
+	// Continues to loop until the user enters the TERMINATE character
+	while(feedback != TERMINATE) {
+		
+		cout << "Feedback: "; // User prompt
+		cin >> feedback;      // Get user response
 	
 		switch(feedback) {
 			case POSITIVE_RESULT:
@@ -33,11 +32,17 @@ void train() {
 			case TERMINATE:
 				//We need to exit, so just break;
 				break;
+			case INFORM: //prints what each possible input char is and what it is for
+				cout << "Positive Result: " << POSITIVE_RESULT << endl;
+				cout << "Negative Result: " << NEGATIVE_RESULT << endl;
+				cout << "Exit: " << TERMINATE << endl;
+				cout << "Help: " << INFORM << endl;
+				break;
 			default:
-				warn("That character is not recognized. Please enter " + POSITIVE_RESULT + " for a positive response, " + NEGATIVE_RESULT + " for a negative response, or " + TERMINATE + " to exit");
-		
+				cout << "Warning: Character not recognized" << endl;
+				//warn(string("That character is not recognized. Please enter ") + POSITIVE_RESULT + string(" for a positive response, ") + NEGATIVE_RESULT + string(" for a negative response, or ") + TERMINATE + string(" to exit"));
+				break;
 		}
-	
 	}
 
 }

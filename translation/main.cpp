@@ -18,9 +18,7 @@ int main(int argc, char* argv[]) {
 	//Perform tests
 	int result = Catch::Session().run( argc, argv );
 	
-	
-	
-	
+	train();
 	
 	return 0;
 }
