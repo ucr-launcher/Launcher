@@ -9,7 +9,7 @@ int xaxis_location            = 0;
 int num_steps                 = 0;
 int prev_steps                = 0;
 double kinect_fov_middle      = 28.5;
-double degrees_per_step       = 1;
+double degrees_per_step       = .035;
 int direction_flag            = 0;
 
 
@@ -20,7 +20,9 @@ DigitalOut D_10(D12);
 DigitalOut D_11(D11);
 */
 
+// step 
 DigitalOut motor(D8);
+// direction
 DigitalOut direction(D9);
 
 
@@ -58,7 +60,7 @@ int map_orientation(int x){
 
 //--------  STEPPER MOTOR HELPER FUNCTIONS   ----------------
 
-void turn_stepper_left(int steps){
+void turn_stepper_right(int steps){
     direction.write(0);
     for(int i = 0; i < steps; i++){
         motor.write(0);
@@ -67,7 +69,7 @@ void turn_stepper_left(int steps){
     }
 }
 
-void turn_stepper_right(int steps){
+void turn_stepper_left(int steps){
     direction.write(1);
     for(int i = 0; i < steps; i++){
         motor.write(0);
@@ -78,9 +80,35 @@ void turn_stepper_right(int steps){
 
 //--------------  END HELPER FUNCTION ----------------------- 
 
+
+
+//---------- ROS NODE CONFIGURATION -------------------------
+ros::NodeHandle nh;
+
+// Ros message data containers
+std_msgs::Int16 transmit_msg;
+
+// Set up Publishers
+ros::Publisher acknowledge_publisher("state", &transmit_msg);
+
+std_msgs::Int16 loop_msg;
+ros::Publisher loop_publisher("loop", &loop_msg);
+            
+// Set up Subscribers
+void xaxis_callback( const std_msgs::Int16& msg)
+{
+    // Assign msg.data to local variables
+    xaxis_location = msg.data;
+}
+
+ros::Subscriber<std_msgs::Int16> xaxis_subscriber("xaxis_location", xaxis_callback);
+
+
+//---------- END CONFIGURATION  ----------------------------
+
 //--------------  LAUNCHING MECHANISM SM --------------------
 
-enum States { detect, orient_x, orient_z, orient_y, launch, zero } state;
+enum States { detect, orient_x, orient_y, orient_z, launch, zero } state;
 
 
 void launcher_sm(){
@@ -120,13 +148,12 @@ void launcher_sm(){
             
             break;
         case zero:
-            x = 6;
+            state = detect;
             break;
     }
     // Actions
     switch(state){
         case detect:
-            x = 1;
             break;
             
         case orient_x:
@@ -134,67 +161,64 @@ void launcher_sm(){
             // Value returned is a 1 or 0 to determin Left or Right turns-------
             direction_flag = map_orientation(xaxis_location);
         
-            // Check if the current steps to take are not the same as the previous
-            // If the prev steps and current steps are the same, the object is at
-            // the same position
-            if ( abs(num_steps - prev_steps) > 5) {
-                if (direction_flag){
+             if (direction_flag){
                     turn_stepper_right(num_steps);
                 } else if(!direction_flag){
                     turn_stepper_left(num_steps);
-                }
             }
+            
+            // Check if the current steps to take are not the same as the previous
+            // If the prev steps and current steps are the same, the object is at
+            // the same position
+            /* 
+            if ( abs(num_steps - prev_steps) > 5) {
+               
+            }
+            */
         
             // Assign current steps to prev steps
-            prev_steps = num_steps;
+            //prev_steps = num_steps;
             
             break;
             
         case orient_y:
-            x = 3;
+            
             break;
             
         case orient_z:
-            x = 5;
+            
             break;
             
         case launch:
             t.start();
+            
             while(t.read() < 7){
                 // do nothing    
+                
+                //loop_msg.data = 1 ;
+                //loop_publisher.publish(&loop_msg);
+
             }
+            
+            //loop_msg.data = 0;
+           // loop_publisher.publish(&loop_msg);
+            
             t.stop();
             t.reset();
             break;
             
         case zero:
-            x = 5;
+            if (!direction_flag){
+                    turn_stepper_right(num_steps);
+            } else if(direction_flag){
+                    turn_stepper_left(num_steps);
+            }
             break;
     }
+    
 }
 
 //-------------- END STATE MACHINE --------------------------
-
-//---------- ROS NODE CONFIGURATION -------------------------
-ros::NodeHandle nh;
-
-// Ros message data containers
-std_msgs::Int16 transmit_msg;
-
-// Set up Publishers
-ros::Publisher acknowledge_publisher("num_steps", &transmit_msg);
-            
-// Set up Subscribers
-void xaxis_callback( const std_msgs::Int16& msg)
-{
-    // Assign msg.data to local variables
-    xaxis_location = msg.data;
-}
-
-ros::Subscriber<std_msgs::Int16> xaxis_subscriber("xaxis_location", xaxis_callback);
-
-
-//---------- END CONFIGURATION  ----------------------------
 
 int main() {
     
@@ -202,6 +226,8 @@ int main() {
     nh.initNode();
     nh.advertise(acknowledge_publisher);
     nh.subscribe(xaxis_subscriber);
+    
+    nh.advertise(loop_publisher);
     
     state = detect;
     
@@ -215,7 +241,7 @@ int main() {
         
         
         // Publish any data necessary to be fed back to pc
-        transmit_msg.data = num_steps;
+        transmit_msg.data = state;
         acknowledge_publisher.publish(&transmit_msg);
         
         
