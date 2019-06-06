@@ -15,6 +15,8 @@ double degrees_per_step       = .028;
 int direction_flag            = 0;
 float depth                   = 0;
 
+Ticker tick;
+
 // step 
 DigitalOut motor(D8);
 // direction
@@ -48,21 +50,21 @@ void build_speed(int speed){
     
     for (int i = 1; i <= speed; i++){
         set_speed(i);
-        wait_ms(10);
+        wait_ms(100);
     }
 }
 
-int map_distance(float distance){
+int map_distance(float distance = 10){
     return output_start + ((output_end - output_start) / (input_end - input_start)) * (distance - input_start);
 }
 
 
 void drop_ball(){
     
+    myservo.write(150);
+    wait_ms(100);
     myservo.write(0);
-    wait(1);
-    myservo.write(140);
-    wait(1);
+    wait_ms(100);
 }
 
 
@@ -153,6 +155,7 @@ ros::Subscriber<std_msgs::Float64> depth_subscriber("depth", depth_callback);
 enum States { detect, orient_x, orient_y, orient_z, launch, zero } state;
 
 int t = 0;
+int t2 = 0;
 void launcher_sm(){
 
     
@@ -180,11 +183,17 @@ void launcher_sm(){
             
         case orient_z:
             // Proceed to launch projectile
-            state = launch;
+            if(t2 > 1000){
+                state = launch;    
+                t2 = 0;
+            } else {
+                state = orient_z;    
+            }
+            //state = launch;
             break;           
             
         case launch:
-            if (t > 500){
+            if (t > 300){
                 state = zero; 
                 t = 0;
             }else{
@@ -223,24 +232,30 @@ void launcher_sm(){
             LEFT_MOTOR.write(0);
             RIGHT_MOTOR.write(0);
             
-            // then proceed to rev the motor
-            set_speed(1);
-            wait_ms(10);
+            if(t2 == 0) {
+                // first we must rev the motor
+                set_speed(1);    
+            } else if(t2 == 100){
+                // then we build the speed
+                set_speed(map_distance(depth/2));
+            } else if(t2 == 200) {
+                // keep buildig speed
+                set_speed(map_distance(depth));
+            }
             
-            // now build the speed
-            build_speed(map_distance(2));
-            
+            t2++;
             
             break;
             
         case launch:
         
-            // actuate the servo to drop the ball
-            drop_ball();
-            
-            // turn off the motors
-            set_speed(0);
-            
+            if(t == 0){
+                // actuate the servo to drop the ball
+                drop_ball();
+            }
+            if(t > 290){
+                set_speed(0);
+            }
             // deselect the motors
             LEFT_MOTOR.write(1);
             LEFT_MOTOR.write(1);
@@ -288,13 +303,15 @@ int main() {
     
     while(1) {
         //----------------------------------------------------------------
-        set_speed(0);    
+        //set_speed(0);    
         // Call state machine
+        //tick.attach(&launcher_sm, 0.5); // the address of the function to be attached (flip) and the interval (2 seconds)
         launcher_sm();
         
         // Publish any data necessary to be fed back to pc
         transmit_msg.data = state;
         acknowledge_publisher.publish(&transmit_msg);
+        
         
         // Spin ROS Node -- get data from callbacks
         nh.spinOnce();
