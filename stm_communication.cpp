@@ -1,6 +1,8 @@
 #include "mbed.h"
+#include "Servo.h"
 #include <ros.h>
 #include <std_msgs/Int16.h>
+#include <std_msgs/Float64.h>
 
 //--------- GLOBAL VARIABLES LOCAL TO STM32 MAIN -----------
 DigitalOut my_led(LED1);
@@ -9,16 +11,9 @@ int xaxis_location            = 0;
 int num_steps                 = 0;
 int prev_steps                = 0;
 double kinect_fov_middle      = 28.5;
-double degrees_per_step       = .035;
+double degrees_per_step       = .028;
 int direction_flag            = 0;
-
-
-/*
-DigitalOut D_8(D8);
-DigitalOut D_9(D9);
-DigitalOut D_10(D12);
-DigitalOut D_11(D11);
-*/
+float depth                   = 0;
 
 // step 
 DigitalOut motor(D8);
@@ -27,6 +22,51 @@ DigitalOut direction(D9);
 
 
 //--------  END GLOBAL VARIABLES DECLARATION ----------------
+
+//----------------  DC MOTOR CONFIG ------------------------
+SPI spi(D11, D12, D13);
+DigitalOut LEFT_MOTOR(D14);
+DigitalOut RIGHT_MOTOR(D15);
+Servo myservo(D6);
+
+#define input_start 2.3 // a
+#define input_end 19.7  // b
+
+#define output_start 0  // c
+#define output_end 64   // d
+
+// speed is any integer between 0 and 64.
+// this corresponds to a resistor value between 0 and 100K Ohms
+void set_speed(int speed){
+    
+    spi.write(0x00);
+    spi.write(speed);
+}
+
+//
+void build_speed(int speed){
+    
+    for (int i = 1; i <= speed; i++){
+        set_speed(i);
+        wait_ms(10);
+    }
+}
+
+int map_distance(float distance){
+    return output_start + ((output_end - output_start) / (input_end - input_start)) * (distance - input_start);
+}
+
+
+void drop_ball(){
+    
+    myservo.write(0);
+    wait(1);
+    myservo.write(140);
+    wait(1);
+}
+
+
+//----------------  END MOTOR CONFIG -----------------------
 
 
 //--------------  ORIENTATION MAPPER ------------------------
@@ -41,7 +81,7 @@ float map(float x, float in_min, float in_max, float out_min, float out_max)
 int map_orientation(int x){
     // Pixels to degrees
     double degrees = 0;
-    degrees = map(x, 0, 800, 0,57);
+    degrees = map(x, 0, 640, 0,57);
     
     // degrees to steps
     num_steps = (kinect_fov_middle - degrees)/ degrees_per_step;
@@ -90,9 +130,6 @@ std_msgs::Int16 transmit_msg;
 
 // Set up Publishers
 ros::Publisher acknowledge_publisher("state", &transmit_msg);
-
-std_msgs::Int16 loop_msg;
-ros::Publisher loop_publisher("loop", &loop_msg);
             
 // Set up Subscribers
 void xaxis_callback( const std_msgs::Int16& msg)
@@ -101,8 +138,13 @@ void xaxis_callback( const std_msgs::Int16& msg)
     xaxis_location = msg.data;
 }
 
-ros::Subscriber<std_msgs::Int16> xaxis_subscriber("xaxis_location", xaxis_callback);
+void depth_callback( const std_msgs::Float64& msg)
+{
+    depth = msg.data;   
+}
 
+ros::Subscriber<std_msgs::Int16>   xaxis_subscriber("xaxis_location", xaxis_callback);
+ros::Subscriber<std_msgs::Float64> depth_subscriber("depth", depth_callback);
 
 //---------- END CONFIGURATION  ----------------------------
 
@@ -110,11 +152,9 @@ ros::Subscriber<std_msgs::Int16> xaxis_subscriber("xaxis_location", xaxis_callba
 
 enum States { detect, orient_x, orient_y, orient_z, launch, zero } state;
 
-
+int t = 0;
 void launcher_sm(){
 
-    
-    Timer t;
     
     // Transitions
     switch(state) {
@@ -144,8 +184,12 @@ void launcher_sm(){
             break;           
             
         case launch:
-            state = zero; 
-            
+            if (t > 500){
+                state = zero; 
+                t = 0;
+            }else{
+                state = launch;   
+            }
             break;
         case zero:
             state = detect;
@@ -154,6 +198,7 @@ void launcher_sm(){
     // Actions
     switch(state){
         case detect:
+            //set_speed(0); 
             break;
             
         case orient_x:
@@ -167,47 +212,45 @@ void launcher_sm(){
                     turn_stepper_left(num_steps);
             }
             
-            // Check if the current steps to take are not the same as the previous
-            // If the prev steps and current steps are the same, the object is at
-            // the same position
-            /* 
-            if ( abs(num_steps - prev_steps) > 5) {
-               
-            }
-            */
-        
-            // Assign current steps to prev steps
-            //prev_steps = num_steps;
-            
             break;
             
         case orient_y:
-            
+            //set_speed(0); 
             break;
             
         case orient_z:
+            // first select motor
+            LEFT_MOTOR.write(0);
+            RIGHT_MOTOR.write(0);
+            
+            // then proceed to rev the motor
+            set_speed(1);
+            wait_ms(10);
+            
+            // now build the speed
+            build_speed(map_distance(2));
+            
             
             break;
             
         case launch:
-            t.start();
+        
+            // actuate the servo to drop the ball
+            drop_ball();
             
-            while(t.read() < 7){
-                // do nothing    
-                
-                //loop_msg.data = 1 ;
-                //loop_publisher.publish(&loop_msg);
-
-            }
+            // turn off the motors
+            set_speed(0);
             
-            //loop_msg.data = 0;
-           // loop_publisher.publish(&loop_msg);
+            // deselect the motors
+            LEFT_MOTOR.write(1);
+            LEFT_MOTOR.write(1);
             
-            t.stop();
-            t.reset();
+            t++;
+            
             break;
             
         case zero:
+            //set_speed(0); 
             if (!direction_flag){
                     turn_stepper_right(num_steps);
             } else if(direction_flag){
@@ -226,25 +269,32 @@ int main() {
     nh.initNode();
     nh.advertise(acknowledge_publisher);
     nh.subscribe(xaxis_subscriber);
-    
-    nh.advertise(loop_publisher);
+    nh.subscribe(depth_subscriber);
     
     state = detect;
     
+    // Setup the spi for 8 bit data, high steady state clock,
+    // second edge capture, with a 10MHz clock rate
+    spi.format(8,0);
+    spi.frequency(1000000); // this should be 10 MHz
+
+    // select the motors
+    RIGHT_MOTOR.write(0);
+    LEFT_MOTOR.write(0);
+    
+    // speed zero corresponds to the motors being off
+    set_speed(0);
+    wait_ms(10);
+    
     while(1) {
-        
-  
         //----------------------------------------------------------------
-        
+        set_speed(0);    
         // Call state machine
         launcher_sm();
-        
         
         // Publish any data necessary to be fed back to pc
         transmit_msg.data = state;
         acknowledge_publisher.publish(&transmit_msg);
-        
-        
         
         // Spin ROS Node -- get data from callbacks
         nh.spinOnce();
